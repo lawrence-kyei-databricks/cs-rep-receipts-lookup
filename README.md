@@ -47,7 +47,7 @@ This reference architecture demonstrates how retail and service organizations ca
 **④ Mosaic AI (Semantic Search + NL Query)**
 - **Semantic Search:** "fancy cheese" matches Roquefort, Brie, Gruyère without exact keywords
 - **Natural Language:** "chicken from East Liberty last Tuesday" → structured SQL query
-- **Vector Embeddings:** Generated nightly by Foundation Model Serving (DBRX-instruct)
+- **Vector Embeddings:** Generated nightly by Foundation Model Serving
 - Stored in Lakebase pgvector for fast similarity search
 
 **⑤ Databricks Apps (CS Portal)**
