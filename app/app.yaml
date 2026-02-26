@@ -1,0 +1,55 @@
+# Giant Eagle Receipt Lookup — Databricks App Configuration
+# Docs: https://docs.databricks.com/en/dev-tools/databricks-apps/index.html
+
+command:
+  - "uvicorn"
+  - "main:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+# Authentication & Authorization (Platform-Level)
+# Databricks Apps enforces auth and injects verified identity headers:
+#   X-Forwarded-Email, X-Forwarded-User, X-Forwarded-Access-Token
+# Configure who can access this app:
+permissions:
+  # Grant access to specific workspace groups
+  - group_name: "cs_team"
+    permission_level: "CAN_VIEW"
+  - group_name: "supervisors"
+    permission_level: "CAN_VIEW"
+  - group_name: "fraud_team"
+    permission_level: "CAN_VIEW"
+  # Individual users (e.g., for testing/admin)
+  - user_name: "lawrence.kyei@databricks.com"
+    permission_level: "CAN_MANAGE"
+
+# Lakebase auto-connection: Databricks injects connection credentials
+# when LAKEBASE_INSTANCE_NAME is specified here.
+env:
+  - name: LAKEBASE_INSTANCE_NAME
+    value: "giant-eagle-receipt-db"
+  - name: PGHOST
+    value: "instance-48e7b373-3240-4e42-a9f0-d7289706e1c6.database.azuredatabricks.net"
+  - name: PGPORT
+    value: "5432"
+  - name: PGDATABASE
+    value: "giant_eagle"
+  - name: PGUSER
+    value: "e1751c32-5a1b-4d6f-90c2-e71e10246366"
+  - name: PGSSLMODE
+    value: "require"
+
+resources:
+  - name: lakebase-instance
+    type: lakebase
+    instance_name: "giant-eagle-receipt-db"
+
+  - name: model-serving
+    type: serving_endpoint
+    endpoint_name: "databricks-claude-sonnet-4"
+
+  - name: embedding-model
+    type: serving_endpoint
+    endpoint_name: "databricks-bge-large-en"

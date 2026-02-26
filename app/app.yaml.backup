@@ -1,0 +1,37 @@
+# Giant Eagle Receipt Lookup — Databricks App Configuration
+# Docs: https://docs.databricks.com/en/dev-tools/databricks-apps/index.html
+
+command:
+  - "uvicorn"
+  - "app.main:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+# Lakebase auto-connection: Databricks injects connection credentials
+# when LAKEBASE_INSTANCE_NAME is specified here.
+env:
+  - name: LAKEBASE_INSTANCE_NAME
+    value: "giant-eagle-receipt-db"
+  - name: PGHOST
+    value: "instance-48e7b373-3240-4e42-a9f0-d7289706e1c6.database.azuredatabricks.net"
+  - name: PGPORT
+    value: "5432"
+  - name: PGDATABASE
+    value: "giant_eagle"
+  - name: PGSSLMODE
+    value: "require"
+
+resources:
+  - name: lakebase-instance
+    type: lakebase
+    instance_name: "giant-eagle-receipt-db"
+
+  - name: model-serving
+    type: serving_endpoint
+    endpoint_name: "databricks-claude-sonnet-4"
+
+  - name: embedding-model
+    type: serving_endpoint
+    endpoint_name: "databricks-bge-large-en"

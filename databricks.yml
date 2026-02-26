@@ -1,0 +1,124 @@
+bundle:
+  name: giant-eagle-cs-receipt-lookup
+
+# ─────────────────────────────────────────────────────────────────
+# Variables — override per target with --var or target-level vars
+# ─────────────────────────────────────────────────────────────────
+variables:
+  lakebase_instance_name:
+    description: "Lakebase instance name"
+    default: giant-eagle-receipt-db
+  embedding_endpoint:
+    description: "Embedding model serving endpoint"
+    default: databricks-bge-large-en
+  llm_endpoint:
+    description: "LLM model serving endpoint"
+    default: databricks-claude-sonnet-4
+  catalog:
+    description: "Unity Catalog name"
+    default: giant_eagle
+  lakebase_catalog:
+    description: "Lakebase serving catalog"
+    default: giant_eagle_serving
+
+# ─────────────────────────────────────────────────────────────────
+# Targets
+# ─────────────────────────────────────────────────────────────────
+targets:
+  dev:
+    mode: development
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/receipts_lookup
+    variables:
+      lakebase_instance_name: giant-eagle-receipt-db-dev
+    default: true
+
+  staging:
+    mode: production
+    workspace:
+      root_path: /Workspace/giant-eagle/cs-receipt-lookup/staging
+    variables:
+      lakebase_instance_name: giant-eagle-receipt-db-stg
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/giant-eagle/cs-receipt-lookup/prod
+    variables:
+      lakebase_instance_name: giant-eagle-receipt-db-prod
+
+# ─────────────────────────────────────────────────────────────────
+# Resources
+# ─────────────────────────────────────────────────────────────────
+resources:
+
+  # ── Lakeflow Declarative Pipelines (medallion) ──────────────────
+  pipelines:
+    bronze_pipeline:
+      name: giant-eagle-receipt-bronze-${bundle.target}
+      catalog: ${var.catalog}
+      target: bronze
+      libraries:
+        - file:
+            path: pipelines/bronze_receipt_ingest.py
+
+    silver_pipeline:
+      name: giant-eagle-receipt-silver-${bundle.target}
+      catalog: ${var.catalog}
+      target: silver
+      libraries:
+        - file:
+            path: pipelines/silver_receipt_transform.py
+
+    gold_pipeline:
+      name: giant-eagle-receipt-gold-${bundle.target}
+      catalog: ${var.catalog}
+      target: gold
+      libraries:
+        - file:
+            path: pipelines/gold_receipt_insights.py
+
+  # ── Workflow Jobs ────────────────────────────────────────────────
+  jobs:
+    nightly_embeddings:
+      name: giant-eagle-nightly-product-embeddings-${bundle.target}
+      description: >
+        Nightly product embedding pipeline.
+        Reads giant_eagle.gold.product_catalog, generates pgvector embeddings
+        via databricks-bge-large-en, upserts into Lakebase product_embeddings table.
+      max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"
+        timezone_id: America/New_York
+        pause_status: UNPAUSED
+      tags:
+        project: giant-eagle-receipt-lookup
+        team: cs-ops
+        phase: "4-ai"
+      tasks:
+        - task_key: embed_products
+          description: >
+            Generate embeddings for all products in giant_eagle.gold.product_catalog
+            and upsert into Lakebase product_embeddings (pgvector HNSW index).
+          spark_python_task:
+            python_file: ./ai/embedding_pipeline.py
+          environment_key: embedding_env
+      environments:
+        - environment_key: embedding_env
+          spec:
+            client: "2"
+            dependencies:
+              - psycopg[binary]
+              - mlflow
+              - databricks-sdk
+
+  # ── Databricks App ────────────────────────────────────────────────
+  apps:
+    cs_receipt_lookup:
+      name: giant-eagle-cs-receipt-lookup
+      description: >
+        Giant Eagle CS Receipt Lookup — AI-powered receipt search for Customer Service reps.
+        Fuzzy search, semantic search, customer context cards, receipt delivery (email/print).
+        Internal CS tool — Azure AD RBAC, full audit trail.
+      source_code_path: ./app
+      # Runtime config (command, env, resources) is defined in app/app.yaml
