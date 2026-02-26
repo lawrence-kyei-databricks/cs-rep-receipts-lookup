@@ -21,55 +21,32 @@ This reference architecture demonstrates how retail and service organizations ca
 ### High-Level Data Flow
 
 ```
-┌─────────────────┐
-│   POS Systems   │  Customer makes purchase at store
-│  (400+ stores)  │
-└────────┬────────┘
-         │
-         ├──────────────────────────────────────────┐
-         │                                          │
-         │ Real-Time Stream (gRPC)                  │ Instant Write (JDBC)
-         │ via Zerobus Client                       │ for immediate availability
-         ▼                                          ▼
-┌─────────────────────────────────────────┐  ┌──────────────────┐
-│    DATABRICKS DATA INTELLIGENCE         │  │   LAKEBASE       │
-│           PLATFORM                      │  │  (PostgreSQL)    │
-│                                         │  │                  │
-│  ┌──────────────────────────────────┐  │  │  Native Tables:  │
-│  │  Delta Live Tables (DLT)         │  │  │  - Receipts      │
-│  │  Automated data pipelines        │  │  │  - Audit logs    │
-│  │                                  │  │  └──────────────────┘
-│  │  Bronze → Raw POS data           │  │           │
-│  │  Silver → Cleaned & validated    │  │           │
-│  │  Gold   → Business-ready         │  │           │
-│  └──────────┬───────────────────────┘  │           │
-│             │                           │           │
-│             │ Zero-ETL Sync             │           │
-│             ▼                           │           │
-│  ┌──────────────────────────────────┐  │           │
-│  │  Lakebase (synced tables)        │  │           │
-│  │  - Receipt history               │◄─┼───────────┘
-│  │  - Customer profiles             │  │  Sub-10ms queries
-│  │  - Spending insights             │  │
-│  └──────────┬───────────────────────┘  │
-│             │                           │
-│  ┌──────────▼───────────────────────┐  │
-│  │  Mosaic AI (Semantic Search)     │  │
-│  │  - Vector embeddings             │  │
-│  │  - Natural language queries      │  │
-│  │  - Customer context generation   │  │
-│  └──────────┬───────────────────────┘  │
-│             │                           │
-└─────────────┼───────────────────────────┘
-              │
-              ▼
-   ┌────────────────────────┐
-   │  Databricks Apps       │  CS Rep Portal
-   │  (React + FastAPI)     │  - Receipt lookup
-   │                        │  - Fuzzy search
-   │  Serverless, scales    │  - Customer 360
-   │  automatically         │  - Audit trail
-   └────────────────────────┘
+
+   .─────────.              .───────────────────────────────────────────────────.
+  (  POS      )            (     DATABRICKS DATA INTELLIGENCE PLATFORM          )
+  ( Systems   )            (                                                     )
+  ( 400+      )            (   .────────────────────.                           )
+  ( stores    )            (  (  Delta Live Tables  )                           )
+   `────┬────'             (  (  ════════════════    )      .─────────────.     )
+        │                  (  (  Bronze → Silver    )      (  Lakebase     )    )
+        │                  (  (  → Gold Layers      )      (  Synced       )    )         .──────────────.
+        │ gRPC stream      (   `──────┬─────────────'      (  Tables:      )    )        (  Databricks  )
+        │ (Zerobus)        (          │                    (  · Receipts   )    )───────▶(    Apps      )
+        ├─────────────────▶(          │ Zero-ETL sync      (  · Customer   )    )        (              )
+        │                  (          └───────────────────▶(  · Insights   )    )        (  CS Portal:  )
+        │ JDBC             (                                `───────────────'    )        (  - Search    )
+        │ (instant)        (   .────────────────────.                           )        (  - Lookup    )
+        └─────────────────▶(  (  Mosaic AI          )                           )        (  - Reports   )
+                           (  (  ═══════════         )                           )         `──────────────'
+                           (  (  Semantic Search    )                           )               ▲
+                           (  (  Vector Embeddings  )                           )               │
+                           (   `────────────────────'                           )               │
+                           (                                                     )               │
+                            `────────────────────────────────────────┬──────────'                │
+                                                                     │                           │
+                                                                     └───────────────────────────┘
+                                                                         Sub-10ms queries
+
 ```
 
 ### Key Components Explained
