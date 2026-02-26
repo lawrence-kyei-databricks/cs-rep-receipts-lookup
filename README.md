@@ -144,35 +144,6 @@ This reference architecture demonstrates how retail and service organizations ca
 
 ---
 
-## Cost Efficiency
-
-### Traditional Stack (Before Databricks)
-```
-Data Warehouse (Snowflake):        $8,000/month
-Operational DB (AWS RDS):          $3,500/month
-Vector Database (Pinecone):        $2,000/month
-ML Platform (SageMaker):           $1,500/month
-Total:                             $15,000/month
-```
-
-### Unified on Databricks
-```
-DLT Pipelines (Photon):            $2,500/month
-Lakebase (CU-based):               $1,800/month
-Model Serving (Serverless):        $800/month
-Databricks Apps (included):        $0/month
-Total:                             $5,100/month
-```
-
-**Savings: $9,900/month (66% reduction)**
-
-Plus operational savings:
-- No data movement between systems
-- Single security/governance model
-- One platform to learn and manage
-
----
-
 ## Security & Compliance
 
 ### Data Governance (Unity Catalog)
