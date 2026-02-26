@@ -58,21 +58,6 @@ This reference architecture demonstrates how retail and service organizations ca
 
 ---
 
-## Databricks Platform Capabilities Demonstrated
-
-| Capability | Product | Business Value | Technical Implementation |
-|------------|---------|----------------|--------------------------|
-| **Real-Time Data Pipelines** | [Delta Live Tables](https://docs.databricks.com/delta-live-tables/) | Automated data quality, no manual ETL | `pipelines/` - Bronze/Silver/Gold transformations |
-| **Unified Data Governance** | [Unity Catalog](https://docs.databricks.com/data-governance/unity-catalog/) | Single permission model across all data | `infra/unity_catalog_setup.sql` - RBAC for CS teams |
-| **ACID Data Lake** | [Delta Lake](https://docs.databricks.com/delta/) | Time-travel auditing, no data loss | All tables stored as Delta format with CDF enabled |
-| **Operational Database** | [Lakebase](https://docs.databricks.com/database/) | Sub-10ms queries without separate DB | `infra/lakebase_setup.sql` - Synced + native tables |
-| **AI Agents** | [Mosaic AI](https://docs.databricks.com/generative-ai/agent-framework/) | Natural language search for CS reps | `ai/nl_search_agent.py` - Multi-agent orchestration |
-| **Serverless ML** | [Model Serving](https://docs.databricks.com/machine-learning/model-serving/) | On-demand embeddings, auto-scales | `ai/embedding_pipeline.py` - Product vector search |
-| **Vector Database** | [Vector Search](https://docs.databricks.com/generative-ai/vector-search.html) | Semantic product matching | Embeddings synced to Lakebase pgvector |
-| **Serverless Web Apps** | [Databricks Apps](https://docs.databricks.com/dev-tools/databricks-apps/) | No infrastructure management | `app/` - FastAPI backend, React frontend |
-
----
-
 ## Key Features & Use Cases
 
 ### 1. Lightning-Fast Receipt Lookup
@@ -135,81 +120,6 @@ This reference architecture demonstrates how retail and service organizations ca
 - 7-year retention for regulatory compliance
 
 **Technical:** Middleware logs all requests to Lakebase native table, synced to Delta
-
----
-
-## Project Structure
-
-```
-receipts_lookup/
-│
-├── 📁 infra/                                    # Infrastructure Setup
-│   ├── lakebase_setup.sql                       # Database schema (synced + native + AI tables)
-│   ├── unity_catalog_setup.sql                  # Data governance (catalogs, permissions)
-│   ├── zerobus_client.py                        # gRPC client for POS data ingestion
-│   ├── regenerate_embeddings.py                 # Rebuild product vector embeddings
-│   ├── add_search_indexes.py                    # Create PostgreSQL search indexes
-│   ├── bulk_generate_receipts.py                # Load test data generator
-│   └── uc_rbac_setup.sql                        # CS team role permissions
-│
-├── 📁 pipelines/                                # Delta Live Tables (DLT) Pipelines
-│   ├── bronze_receipt_ingest.py                 # Zerobus gRPC stream → Bronze Delta
-│   ├── silver_receipt_transform.py              # Data cleaning & validation → Silver
-│   ├── gold_receipt_insights.py                 # Pre-compute customer metrics → Gold
-│   └── sync_to_lakebase.py                      # Change Data Feed sync config
-│
-├── 📁 pos_integration/                          # Point-of-Sale Integration
-│   ├── dual_write_handler.py                    # Route POS data: Zerobus + JDBC
-│   └── models.py                                # Receipt data models
-│
-├── 📁 ai/                                       # Mosaic AI Components
-│   ├── embedding_pipeline.py                    # Generate product embeddings (nightly)
-│   ├── nl_search_agent.py                       # Natural language → structured query
-│   └── cs_context_agent.py                      # Customer 360 context generator
-│
-├── 📁 app/                                      # Databricks App (CS Portal)
-│   ├── app.yaml                                 # App config & dependencies
-│   ├── main.py                                  # FastAPI application entrypoint
-│   │
-│   ├── 📁 routes/                               # API Endpoints
-│   │   ├── lookup.py                            # GET /receipt/{id}
-│   │   ├── search.py                            # POST /search/ (AI semantic)
-│   │   ├── fuzzy_search.py                      # POST /search/fuzzy (multi-field)
-│   │   ├── cs_context.py                        # GET /cs/context/{customer_id}
-│   │   ├── receipt_delivery.py                  # POST /receipt/deliver (email)
-│   │   ├── audit.py                             # GET /audit/log (compliance)
-│   │   └── admin.py                             # Admin endpoints
-│   │
-│   ├── 📁 middleware/                           # Request Processing
-│   │   ├── audit_middleware.py                  # Log every CS lookup
-│   │   ├── auth.py                              # Azure AD SSO authentication
-│   │   └── rate_limit_middleware.py             # Prevent abuse
-│   │
-│   ├── 📁 services/                             # Business Logic
-│   │   ├── lakebase_service.py                  # Database connection pool
-│   │   └── vector_service.py                    # pgvector similarity search
-│   │
-│   └── 📁 ui/                                   # React Frontend
-│       ├── package.json                         # Dependencies
-│       ├── vite.config.js                       # Build config
-│       └── 📁 src/
-│           ├── 📁 components/                   # UI components
-│           │   └── Layout.jsx                   # Main layout
-│           ├── 📁 pages/                        # Page views
-│           └── api.js                           # API client
-│
-├── 📁 tests/                                    # Testing
-│   ├── test_lakebase_queries.py                 # Database query tests
-│   ├── test_user_access.py                      # User permission tests
-│   └── test_comprehensive.py                    # End-to-end tests
-│
-├── 📁 config/                                   # Configuration
-│   ├── .env.example                             # Environment template
-│   └── settings.py                              # App settings
-│
-├── databricks.yml                               # Databricks Asset Bundle config
-└── README.md                                    # This file
-```
 
 ---
 
