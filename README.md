@@ -49,27 +49,43 @@ This reference architecture demonstrates how retail and service organizations ca
 
 ```
 
-### Key Components Explained
+### Architecture Explained
 
-**1. Data Ingestion (Zerobus + DLT)**
-- **Zerobus** = Python client library that POS systems use to send receipt data via gRPC streaming
-- **Delta Live Tables (DLT)** = Databricks framework that receives the gRPC stream and processes it through Bronze → Silver → Gold layers
-- **Why both?** Zerobus handles the network transport, DLT handles the data transformation and quality
+> **Interactive Diagram:** Open `architecture.excalidraw` in [Excalidraw](https://excalidraw.com) for a hand-drawn visual walkthrough with numbered callouts.
 
-**2. Dual-Write Pattern**
-- **Fast path:** POS → JDBC → Lakebase native tables (instant availability for CS lookups)
-- **Analytics path:** POS → Zerobus/gRPC → DLT → Delta → Lakebase synced tables (eventual consistency, 2-min lag)
-- **Benefit:** CS reps see receipts immediately, while data quality and analytics happen asynchronously
+**① POS Systems (400+ stores)**
+- Real-time transaction data from retail locations
+- Dual-write pattern: instant JDBC writes + streaming gRPC for analytics
+- Every purchase flows through two paths simultaneously
 
-**3. Zero-ETL Syncing**
-- Delta tables in Gold layer automatically sync to Lakebase via Change Data Feed (CDF)
-- No manual ETL scripts or third-party tools required
-- Always in sync without code
+**② Delta Live Tables (Bronze → Silver → Gold)**
+- **Bronze:** Raw receipt data ingestion via Zerobus gRPC client
+- **Silver:** Data cleaning, validation, enrichment (product names, categories)
+- **Gold:** Pre-computed aggregations (customer 360, spending insights)
+- Automated data quality checks with DLT expectations
 
-**4. AI-Powered Search**
-- Product embeddings generated nightly and stored in Lakebase (pgvector extension)
-- Semantic search: "fancy cheese" matches Roquefort, Brie, Gruyère without exact keywords
-- Natural language: "chicken from East Liberty last Tuesday" → structured query
+**③ Lakebase (PostgreSQL with sub-10ms queries)**
+- **Synced Tables:** Read-only tables auto-synced from Delta Gold via Change Data Feed (CDF)
+  - `receipt_lookup` - enriched receipts with product details
+  - `customer_profiles` - customer 360 summaries
+  - `spending_summary` - pre-computed spending by category
+- **Native Tables:** Direct write tables for instant availability
+  - `receipt_transactions` - instant POS receipt capture (JDBC)
+  - `audit_log` - compliance tracking
+- **AI Tables:** pgvector extension for semantic search
+  - `product_embeddings` - vector embeddings for fuzzy product matching
+
+**④ Mosaic AI (Semantic Search + NL Query)**
+- **Semantic Search:** "fancy cheese" matches Roquefort, Brie, Gruyère without exact keywords
+- **Natural Language:** "chicken from East Liberty last Tuesday" → structured SQL query
+- **Vector Embeddings:** Generated nightly by Foundation Model Serving (DBRX-instruct)
+- Stored in Lakebase pgvector for fast similarity search
+
+**⑤ Databricks Apps (CS Portal)**
+- **FastAPI backend** with Lakebase connection pooling
+- **React frontend** for CS reps (search, lookup, reports)
+- **Sub-10ms queries** via Lakebase indexes + read replicas
+- **Audit middleware** logs every CS lookup for compliance
 
 ---
 
