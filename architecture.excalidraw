@@ -869,7 +869,7 @@
       "startBinding": null,
       "endBinding": null,
       "lastCommittedPoint": null,
-      "startArrowhead": null,
+      "startArrowhead": "arrow",
       "endArrowhead": "arrow",
       "points": [
         [0, 0],
