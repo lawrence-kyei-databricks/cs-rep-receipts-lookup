@@ -18,40 +18,9 @@ This reference architecture demonstrates how retail and service organizations ca
 
 ## Solution Architecture
 
-### High-Level Data Flow
-
-```
-
-   .─────────.              .───────────────────────────────────────────────────.
-  (  POS      )            (     DATABRICKS DATA INTELLIGENCE PLATFORM          )
-  ( Systems   )            (                                                     )
-  ( 400+      )            (   .────────────────────.                           )
-  ( stores    )            (  (  Delta Live Tables  )                           )
-   `────┬────'             (  (  ════════════════    )      .─────────────.     )
-        │                  (  (  Bronze → Silver    )      (  Lakebase     )    )
-        │                  (  (  → Gold Layers      )      (  Synced       )    )         .──────────────.
-        │ gRPC stream      (   `──────┬─────────────'      (  Tables:      )    )        (  Databricks  )
-        │ (Zerobus)        (          │                    (  · Receipts   )    )───────▶(    Apps      )
-        ├─────────────────▶(          │ Zero-ETL sync      (  · Customer   )    )        (              )
-        │                  (          └───────────────────▶(  · Insights   )    )        (  CS Portal:  )
-        │ JDBC             (                                `───────────────'    )        (  - Search    )
-        │ (instant)        (   .────────────────────.                           )        (  - Lookup    )
-        └─────────────────▶(  (  Mosaic AI          )                           )        (  - Reports   )
-                           (  (  ═══════════         )                           )         `──────────────'
-                           (  (  Semantic Search    )                           )               ▲
-                           (  (  Vector Embeddings  )                           )               │
-                           (   `────────────────────'                           )               │
-                           (                                                     )               │
-                            `────────────────────────────────────────┬──────────'                │
-                                                                     │                           │
-                                                                     └───────────────────────────┘
-                                                                         Sub-10ms queries
-
-```
+![Architecture Diagram](architecture.png)
 
 ### Architecture Explained
-
-> **Interactive Diagram:** Open `architecture.excalidraw` in [Excalidraw](https://excalidraw.com) for a hand-drawn visual walkthrough with numbered callouts.
 
 **① POS Systems (400+ stores)**
 - Real-time transaction data from retail locations
