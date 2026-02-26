@@ -9,8 +9,8 @@
 This reference architecture demonstrates how retail and service organizations can modernize their customer service operations using the Databricks Data Intelligence Platform. Instead of maintaining separate systems for data warehousing, operational databases, and AI/ML, everything runs on Databricks.
 
 **Business Value:**
-- **Reduce infrastructure costs by 60%** — eliminate separate data warehouses, vector databases, and ML platforms
-- **Improve CS rep efficiency by 40%** — sub-10ms receipt lookups with AI-powered fuzzy search
+- **Reduce infrastructure costs** — eliminate separate data warehouses, vector databases, and ML platforms
+- **Improve CS rep efficiency** — sub-10ms receipt lookups with AI-powered fuzzy search
 - **Scale to millions of transactions** — serverless architecture auto-scales with demand
 - **Ensure compliance** — built-in audit trail, data governance, and GDPR/CCPA support
 
