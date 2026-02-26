@@ -38,6 +38,7 @@ env/
 # Databricks
 .databricks/
 databricks.log
+.databricks-resources.json
 
 # Environment variables
 .env
