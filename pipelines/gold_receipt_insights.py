@@ -1,9 +1,11 @@
 """
-Giant Eagle — Gold Receipt Insights
+CS Receipt Lookup Platform — Gold Receipt Insights
 Lakeflow Declarative Pipeline (Gold pipeline — separate from Silver)
 
+Customer-agnostic Gold layer that produces enriched, analytics-ready tables.
+
 Gold tables are the authoritative source for the CS Receipt Lookup app.
-All four tables are synced to Lakebase (giant_eagle_serving.public.*) via
+All four tables are synced to Lakebase ({catalog}_serving.public.*) via
 continuous Synced Tables provisioned in Phase 1.
 
 Tables produced:
@@ -24,13 +26,37 @@ changes to Lakebase.
 REMOVED vs consumer version:
   ❌ purchase_frequency — Smart Reorder agent feature, not needed for CS tool
 
-Source: giant_eagle.silver.* (produced by the Silver pipeline)
-Target: giant_eagle.gold.* (owned by this pipeline)
+Source: {catalog}.silver.* (produced by the Silver pipeline)
+Target: {catalog}.gold.* (owned by this pipeline)
 """
 
 import dlt
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
+
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+# Read catalog name from DLT pipeline configuration (set in databricks.yml)
+def get_catalog_name():
+    """Get the catalog name from Spark configuration.
+
+    DLT pipelines inject the catalog name via configuration. This makes the pipeline
+    customer-agnostic while still referencing the correct catalog tables.
+    """
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
+    # Try to get from DLT configuration first
+    catalog = spark.conf.get("spark.databricks.delta.catalog", None)
+
+    # Fall back to current catalog
+    if not catalog:
+        catalog = spark.catalog.currentCatalog()
+
+    return catalog
+
+
+CATALOG = get_catalog_name()
 
 
 # ── receipt_lookup ─────────────────────────────────────────────────────────────
@@ -46,7 +72,7 @@ from pyspark.sql.window import Window
 )
 def receipt_lookup():
     """
-    Primary table synced to Lakebase (giant_eagle_serving.public.receipt_lookup).
+    Primary table synced to Lakebase ({catalog}_serving.public.receipt_lookup).
     CS reps query this at sub-10ms for full receipt details.
 
     item_summary is computed from items_detail (receipt order, top 3 + "N more"):
@@ -61,9 +87,12 @@ def receipt_lookup():
     written by the POS integration layer. This Gold table serves the analytics/synced
     path for historical queries and semantic search ingestion.
     """
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
     # Silver tables are DLT Materialized Views — streaming reads are not supported.
     # Use a batch read (triggered Gold pipeline runs on a schedule, batch is correct).
-    src = spark.read.table("giant_eagle.silver.receipt_lookup_silver")
+    src = spark.read.table(f"{CATALOG}.silver.receipt_lookup_silver")
 
     # Sort items_detail by item_seq (first struct field) to get receipt order
     sorted_items = F.sort_array(F.col("items_detail"))
@@ -152,14 +181,17 @@ def spending_summary():
     Pre-computing these means CS reps see the customer's spending profile
     instantly (sub-10ms from Lakebase) without LLM calls.
 
-    Synced to Lakebase: giant_eagle_serving.public.spending_summary
+    Synced to Lakebase: {catalog}_serving.public.spending_summary
     Primary key (for synced table): (customer_id, department_code, month_key)
 
     All spend values are in cents (BIGINT).
     discount_cents shows loyalty/promo savings per category per month.
     """
-    items = spark.read.table("giant_eagle.silver.receipt_items_silver")
-    receipts = spark.read.table("giant_eagle.silver.receipts_silver")
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
+    items = spark.read.table(f"{CATALOG}.silver.receipt_items_silver")
+    receipts = spark.read.table(f"{CATALOG}.silver.receipts_silver")
 
     return (
         items
@@ -201,15 +233,18 @@ def customer_profiles():
       - "This customer shops mostly in DAIRY and CHEESE"
       - "30 visits, $4,200 lifetime spend, last visit 3 days ago"
 
-    Synced to Lakebase: giant_eagle_serving.public.customer_profiles
+    Synced to Lakebase: {catalog}_serving.public.customer_profiles
     Primary key: customer_id
 
     lifetime_spend_cents and avg_basket_cents are BIGINT (cents).
     top_departments: array of (department_code, dept_spend_cents) structs,
     sorted by spend descending, top 5 only.
     """
-    receipts = spark.read.table("giant_eagle.silver.receipts_silver")
-    items = spark.read.table("giant_eagle.silver.receipt_items_silver")
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
+    receipts = spark.read.table(f"{CATALOG}.silver.receipts_silver")
+    items = spark.read.table(f"{CATALOG}.silver.receipt_items_silver")
 
     loyal_receipts = receipts.filter(F.col("customer_id").isNotNull())
 
@@ -284,9 +319,12 @@ def product_catalog():
     department_code is the POS department — used as category for semantic search
     until a richer product taxonomy is available.
 
-    Synced to Lakebase: giant_eagle_serving.public.product_catalog
+    Synced to Lakebase: {catalog}_serving.public.product_catalog
     """
-    items = spark.read.table("giant_eagle.silver.receipt_items_silver")
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
+    items = spark.read.table(f"{CATALOG}.silver.receipt_items_silver")
 
     return (
         items

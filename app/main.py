@@ -1,13 +1,18 @@
 """
-Giant Eagle — CS Receipt Lookup Databricks App
-FastAPI application for internal Customer Service team.
+CS Receipt Lookup Platform — Databricks App
+Customer-agnostic FastAPI application for internal Customer Service teams.
 
-Key differences from consumer version:
+Key features:
 - Azure AD SSO (not customer OAuth)
 - RBAC: cs_rep, supervisor, fraud_team
 - Audit middleware on every request
 - Fuzzy search, receipt delivery, CS context
 - NO reorder endpoints
+
+Configuration:
+- CUSTOMER_DISPLAY_NAME: Display name from environment (e.g., "Giant Eagle", "Kroger")
+- LAKEBASE_INSTANCE_NAME: Lakebase instance identifier (set in app.yaml)
+- PGDATABASE: Database name (set in app.yaml)
 """
 
 import os
@@ -29,6 +34,22 @@ from routes import lookup, search, fuzzy_search, cs_context, receipt_delivery, a
 
 logger = logging.getLogger(__name__)
 
+# ── Customer Configuration ─────────────────────────────────────────────────────
+# Read customer-specific values from environment (set in app.yaml)
+# These make the application deployable for any retail customer without code changes.
+CUSTOMER_DISPLAY_NAME = os.environ.get("CUSTOMER_DISPLAY_NAME", "CS Receipt Lookup")
+LAKEBASE_INSTANCE_NAME = os.environ.get("LAKEBASE_INSTANCE_NAME", "receipt-db")
+PGDATABASE = os.environ.get("PGDATABASE", "databricks_postgres")
+
+# CORS allowed origins (comma-separated list)
+# Example: "https://cs.customer.com,https://cs-portal.customer.internal"
+CORS_ORIGINS_STR = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_STR.split(",") if origin.strip()]
+
+logger.info(f"Customer configuration: {CUSTOMER_DISPLAY_NAME}")
+logger.info(f"Lakebase instance: {LAKEBASE_INSTANCE_NAME}")
+logger.info(f"Database: {PGDATABASE}")
+
 
 def _get_lakebase_token() -> str:
     """
@@ -40,7 +61,7 @@ def _get_lakebase_token() -> str:
 
     Falls back to DATABRICKS_TOKEN env var and w.config.token for edge cases.
     """
-    instance_name = os.environ.get("LAKEBASE_INSTANCE_NAME", "giant-eagle-receipt-db")
+    instance_name = LAKEBASE_INSTANCE_NAME
 
     # Primary: SDK generate_database_credential — works for PAT + M2M OAuth
     try:
@@ -80,10 +101,10 @@ def _build_lakebase_conninfo() -> str:
     params ourselves:
       - host:   from SDK get_database_instance (or PGHOST override)
       - user:   DATABRICKS_CLIENT_ID (the app SP) or PGUSER override
-      - dbname: PGDATABASE env or 'giant_eagle'
+      - dbname: PGDATABASE env (from module constants)
       - password: fresh OAuth token via generate_database_credential
     """
-    instance_name = os.environ.get("LAKEBASE_INSTANCE_NAME", "giant-eagle-receipt-db")
+    instance_name = LAKEBASE_INSTANCE_NAME
     token = _get_lakebase_token()
 
     # Host: prefer explicit PGHOST, then look it up from the SDK
@@ -101,7 +122,7 @@ def _build_lakebase_conninfo() -> str:
     user = os.environ.get("PGUSER", "") or os.environ.get("DATABRICKS_CLIENT_ID", "")
 
     port = os.environ.get("PGPORT", "5432")
-    dbname = os.environ.get("PGDATABASE", "giant_eagle")
+    dbname = PGDATABASE
     sslmode = os.environ.get("PGSSLMODE", "require")
 
     logger.info("Lakebase conninfo: host=%s port=%s dbname=%s user=%s", host, port, dbname, user)
@@ -114,7 +135,7 @@ def _build_lakebase_conninfo() -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Giant Eagle CS Receipt Lookup starting...")
+    logger.info(f"{CUSTOMER_DISPLAY_NAME} CS Receipt Lookup starting...")
     logger.info(f"Lakebase host: {os.environ.get('PGHOST', 'not configured')}")
 
     # Build initial conninfo (fresh M2M token, valid ~1 hour).
@@ -223,11 +244,11 @@ async def lifespan(app: FastAPI):
         logger.info("Closing Lakebase connection pool...")
         await app.state.lakebase_pool.close()
 
-    logger.info("Giant Eagle CS Receipt Lookup shutting down.")
+    logger.info(f"{CUSTOMER_DISPLAY_NAME} CS Receipt Lookup shutting down.")
 
 
 app = FastAPI(
-    title="Giant Eagle CS Receipt Lookup",
+    title=f"{CUSTOMER_DISPLAY_NAME} CS Receipt Lookup",
     description="Internal CS tool: AI-powered receipt search, customer context, and delivery",
     version="2.0.0",
     lifespan=lifespan,
@@ -251,16 +272,15 @@ app.add_middleware(
 )
 
 # CORS for internal CS portal
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://cs.gianteagle.com",
-        "https://cs-portal.gianteagle.internal",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Only add middleware if origins are configured
+if CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Routes
 app.include_router(lookup.router, prefix="/receipt", tags=["Receipt Lookup"])
@@ -288,7 +308,7 @@ async def health(request: Request):
 
     health_status = {
         "status": "healthy",
-        "service": "giant-eagle-cs-receipt-lookup",
+        "service": f"{CUSTOMER_DISPLAY_NAME.lower().replace(' ', '-')}-cs-receipt-lookup",
         "version": "2.0.0",
         "lakebase": "unknown",
         "token_age_minutes": None,

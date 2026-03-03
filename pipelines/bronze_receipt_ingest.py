@@ -1,10 +1,10 @@
 """
-Giant Eagle — Bronze Quality Gate
+CS Receipt Lookup Platform — Bronze Quality Gate
 Lakeflow Declarative Pipeline — Part of the Silver pipeline
 
-Reads from Zerobus-managed Delta tables (giant_eagle.bronze.*) and applies
-schema validation, dropping rows that fail critical quality expectations before
-Silver processes them.
+Customer-agnostic DLT pipeline that reads from Zerobus-managed Delta tables
+({catalog}.bronze.*) and applies schema validation, dropping rows that fail
+critical quality expectations before Silver processes them.
 
 Zerobus provides at-least-once delivery, so Bronze does NOT dedup — that's
 Silver's job. Bronze only enforces:
@@ -13,8 +13,8 @@ Silver's job. Bronze only enforces:
   - Every item line has a valid identifier (upc or sku)
 
 Source tables (managed by Zerobus, not DLT):
-  giant_eagle.bronze.pos_raw_receipts  — one row per POS transaction header
-  giant_eagle.bronze.pos_raw_items     — one row per line item (item_seq is PK within txn)
+  {catalog}.bronze.pos_raw_receipts  — one row per POS transaction header
+  {catalog}.bronze.pos_raw_items     — one row per line item (item_seq is PK within txn)
 
 Schema (pos_raw_receipts):
   event_id, transaction_id, store_id, store_name, pos_terminal_id,
@@ -30,6 +30,32 @@ Schema (pos_raw_items):
 
 import dlt
 from pyspark.sql import functions as F
+
+
+# ── Configuration ──────────────────────────────────────────────────────────────
+# Read catalog name from DLT pipeline configuration (set in databricks.yml)
+# DLT automatically sets this based on the pipeline's catalog parameter
+def get_catalog_name():
+    """Get the catalog name from Spark configuration.
+
+    DLT pipelines inject the catalog name via spark.databricks.delta.catalog
+    or we can read it from the current catalog setting. This makes the pipeline
+    customer-agnostic while still referencing the correct catalog tables.
+    """
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
+    # Try to get from DLT configuration first
+    catalog = spark.conf.get("spark.databricks.delta.catalog", None)
+
+    # Fall back to current catalog
+    if not catalog:
+        catalog = spark.catalog.currentCatalog()
+
+    return catalog
+
+
+CATALOG = get_catalog_name()
 
 
 # ── POS Receipt Headers ───────────────────────────────────────────────────────
@@ -50,16 +76,19 @@ from pyspark.sql import functions as F
 @dlt.expect("has_event_id", "event_id IS NOT NULL")  # warn: Zerobus always sets this
 def pos_receipts_validated():
     """
-    Streaming read from giant_eagle.bronze.pos_raw_receipts (Zerobus-managed).
+    Streaming read from {catalog}.bronze.pos_raw_receipts (Zerobus-managed).
 
     Adds _bronze_ts (pipeline processing time) to distinguish from:
       - transaction_ts: when the POS transaction occurred
       - ingested_ts:    when Zerobus received the record
       - _bronze_ts:     when DLT processed it through this quality gate
     """
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
     return (
         spark.readStream.format("delta")
-        .table("giant_eagle.bronze.pos_raw_receipts")
+        .table(f"{CATALOG}.bronze.pos_raw_receipts")
         .withColumn("_bronze_ts", F.current_timestamp())
     )
 
@@ -82,7 +111,7 @@ def pos_receipts_validated():
 @dlt.expect("has_product_desc", "product_desc IS NOT NULL")  # warn: always set by POS
 def pos_items_validated():
     """
-    Streaming read from giant_eagle.bronze.pos_raw_items (Zerobus-managed).
+    Streaming read from {catalog}.bronze.pos_raw_items (Zerobus-managed).
 
     Items are written as a separate stream from receipts — Zerobus sends the
     header record to pos_raw_receipts and each line item to pos_raw_items
@@ -90,8 +119,11 @@ def pos_items_validated():
 
     item_seq is the line-item sequence number on the physical receipt (1-based).
     """
+    from pyspark.sql import SparkSession
+    spark = SparkSession.getActiveSession()
+
     return (
         spark.readStream.format("delta")
-        .table("giant_eagle.bronze.pos_raw_items")
+        .table(f"{CATALOG}.bronze.pos_raw_items")
         .withColumn("_bronze_ts", F.current_timestamp())
     )

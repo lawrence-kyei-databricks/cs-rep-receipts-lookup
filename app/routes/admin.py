@@ -50,8 +50,10 @@ async def debug_lakebase(request: Request):
     try:
         from databricks.sdk import WorkspaceClient
         w = WorkspaceClient()
+        # Get instance name from env (matches main.py config)
+        instance_name = os.environ.get("LAKEBASE_INSTANCE_NAME", "receipt-db")
         cred = w.database.generate_database_credential(
-            instance_names=[os.environ.get("LAKEBASE_INSTANCE_NAME", "giant-eagle-receipt-db")]
+            instance_names=[instance_name]
         )
         env_info["generate_credential_success"] = True
         env_info["credential_token_length"] = len(cred.token or "")

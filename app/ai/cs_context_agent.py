@@ -1,5 +1,7 @@
 """
-Giant Eagle — CS Context Agent
+CS Receipt Lookup Platform — CS Context Agent
+Customer-agnostic implementation supporting any retail customer.
+
 Generates a quick customer profile card for CS reps.
 
 When a rep pulls up a customer, they need immediate context:
@@ -10,9 +12,9 @@ This helps the rep have a better conversation and resolve issues faster.
 Replaces the consumer-facing spending insights agent.
 
 Data sources (all Lakebase, sub-10ms):
-  - customer_profiles (synced from giant_eagle.gold.customer_profiles)
-  - receipt_lookup    (synced from giant_eagle.gold.receipt_lookup)
-  - spending_summary  (synced from giant_eagle.gold.spending_summary)
+  - customer_profiles (synced from {catalog}.gold.customer_profiles)
+  - receipt_lookup    (synced from {catalog}.gold.receipt_lookup)
+  - spending_summary  (synced from {catalog}.gold.spending_summary)
 
 All monetary values are in cents (BIGINT). The AI briefing converts to dollars
 for the rep (divides by 100).
@@ -20,6 +22,7 @@ for the rep (divides by 100).
 
 import json
 import logging
+import os
 from typing import Any
 
 import psycopg
@@ -27,6 +30,10 @@ from psycopg.rows import dict_row
 from mlflow.deployments import get_deploy_client
 
 logger = logging.getLogger(__name__)
+
+# ── Customer Configuration ─────────────────────────────────────────────────────
+# Read from environment (set in app.yaml) - same pattern as other app files
+CUSTOMER_DISPLAY_NAME = os.environ.get("CUSTOMER_DISPLAY_NAME", "CS Receipt Lookup")
 
 
 class CSContextAgent:
@@ -226,7 +233,7 @@ class CSContextAgent:
 
         prompt = (
             "You are a CS support tool. Generate a 2-3 sentence customer briefing "
-            "for a Giant Eagle customer service rep who just pulled up this customer's profile. "
+            f"for a {CUSTOMER_DISPLAY_NAME} customer service rep who just pulled up this customer's profile. "
             "Be factual and concise. Include: visit frequency, spending level, "
             "preferred departments/stores, and anything that helps the rep on the call.\n\n"
             f"Profile: {json.dumps(profile_summary, default=str)}\n"

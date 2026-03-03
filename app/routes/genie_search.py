@@ -1,6 +1,8 @@
 """
-Giant Eagle — Genie-Powered Receipt Search Routes
+CS Receipt Lookup Platform — Genie-Powered Receipt Search Routes
 Natural language SQL generation via Databricks Genie.
+
+Customer-agnostic implementation supporting any retail customer.
 
 Alternative to AI Search (tool-calling agent). Genie generates SQL from natural
 language queries and executes against Delta Gold tables.
@@ -10,6 +12,7 @@ Cons: No pgvector semantic search, queries Delta (slower than Lakebase)
 """
 
 import logging
+import os
 from typing import Any
 
 from databricks.sdk import WorkspaceClient
@@ -21,9 +24,14 @@ from middleware.auth import get_current_user
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# ── Customer Configuration ─────────────────────────────────────────────────────
+# Read from environment (set in app.yaml) - same as main.py
+CUSTOMER_DISPLAY_NAME = os.environ.get("CUSTOMER_DISPLAY_NAME", "CS Receipt Lookup")
+CATALOG_NAME = os.environ.get("CATALOG_NAME", "main")  # Unity Catalog name
+
 # Genie Space ID
 # NOTE: If you get "does not exist" errors, the service principal needs access.
-# Share the space with the service principal: e1751c32-5a1b-4d6f-90c2-e71e10246366
+# Share the space with the service principal after creating it via /genie/setup
 GENIE_SPACE_ID = "01f111c10f9c117ea630787776862209"
 
 
@@ -46,7 +54,7 @@ async def setup_genie_space(request: Request):
         genie = GenieAPI(w.api_client)
 
         # Try to find existing space by name
-        space_name = "Giant Eagle CS Receipt Genie"
+        space_name = f"{CUSTOMER_DISPLAY_NAME} CS Receipt Genie"
 
         # List all Genie spaces to find ours
         try:
@@ -61,7 +69,7 @@ async def setup_genie_space(request: Request):
                 path="/api/2.0/genie/spaces",
                 body={
                     "display_name": space_name,
-                    "description": "Natural language SQL for Giant Eagle CS reps - query receipts, spending, and customer data",
+                    "description": f"Natural language SQL for {CUSTOMER_DISPLAY_NAME} CS reps - query receipts, spending, and customer data",
                 },
             )
 
@@ -75,9 +83,9 @@ async def setup_genie_space(request: Request):
                 body={
                     "sql_warehouse_id": "148ccb90800933a1",  # Auto-selected warehouse
                     "table_identifiers": [
-                        "giant_eagle.gold.receipt_lookup",
-                        "giant_eagle.gold.spending_summary",
-                        "giant_eagle.gold.customer_profiles",
+                        f"{CATALOG_NAME}.gold.receipt_lookup",
+                        f"{CATALOG_NAME}.gold.spending_summary",
+                        f"{CATALOG_NAME}.gold.customer_profiles",
                     ],
                     "sample_questions": [
                         "Show me all transactions with dairy products last month",

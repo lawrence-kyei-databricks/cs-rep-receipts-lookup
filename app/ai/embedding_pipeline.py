@@ -1,11 +1,13 @@
 """
-Giant Eagle — Product Embedding Pipeline
+CS Receipt Lookup Platform — Product Embedding Pipeline
+Customer-agnostic implementation supporting any retail customer.
+
 Generates vector embeddings for product names/descriptions and writes
 them to Lakebase pgvector for semantic search.
 
 Runs nightly via Databricks Workflow (Job).
-Source: giant_eagle.gold.product_catalog (produced by Gold pipeline)
-Target: giant_eagle_serving.public.product_embeddings (pgvector)
+Source: {catalog}.gold.product_catalog (produced by Gold pipeline)
+Target: {catalog}_serving.public.product_embeddings (pgvector)
 
 Trade-off: New products aren't semantically searchable until next run.
            Exact-match search via receipt_lookup works immediately.
@@ -19,6 +21,7 @@ Primary key in product_embeddings: sku (TEXT)
 """
 
 import logging
+import os
 from typing import Any
 
 import psycopg
@@ -27,6 +30,26 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import ArrayType, FloatType
 
 logger = logging.getLogger(__name__)
+
+# ── Customer Configuration ─────────────────────────────────────────────────────
+# Read catalog name from environment (set via Databricks Workflow job parameters)
+# Falls back to reading from Spark config (matches pipeline pattern)
+def get_catalog_name(spark: SparkSession | None = None) -> str:
+    """
+    Get the catalog name from environment or Spark configuration.
+
+    Priority: ENV > Spark config > default "main"
+    """
+    catalog = os.environ.get("CATALOG_NAME")
+    if catalog:
+        return catalog
+
+    if spark:
+        catalog = spark.conf.get("spark.databricks.delta.catalog", None)
+        if catalog:
+            return catalog
+
+    return "main"
 
 # Model config
 EMBEDDING_MODEL = "databricks-bge-large-en"  # Foundation Model endpoint
@@ -73,7 +96,7 @@ def generate_embeddings(spark: SparkSession) -> DataFrame:
     Read Gold product catalog, generate embeddings via Foundation Model,
     return DataFrame with sku, product_name, embedding.
 
-    Source: giant_eagle.gold.product_catalog
+    Source: {catalog}.gold.product_catalog
     Columns used: product_key, upc, sku, product_desc, department_code
 
     product_key = COALESCE(upc, sku) — guaranteed non-null by Bronze quality gate.
@@ -82,10 +105,13 @@ def generate_embeddings(spark: SparkSession) -> DataFrame:
     """
     embed_udf = get_embedding_udf(spark)
 
+    # Get catalog name from environment/Spark config
+    catalog = get_catalog_name(spark)
+
     # Read from Gold product_catalog (produced by Gold pipeline).
     # purchase_count + last_seen allow prioritizing high-frequency products,
     # but for embeddings we need all products embedded.
-    products = spark.table("giant_eagle.gold.product_catalog").select(
+    products = spark.table(f"{catalog}.gold.product_catalog").select(
         "product_key",
         "upc",
         "sku",
@@ -177,8 +203,9 @@ def run_embedding_pipeline(lakebase_conninfo: str) -> dict[str, Any]:
         Dict with products_processed, embeddings_written, model, dimension.
     """
     spark = SparkSession.builder.getOrCreate()
+    catalog = get_catalog_name(spark)
 
-    logger.info("Reading Gold product catalog from giant_eagle.gold.product_catalog...")
+    logger.info(f"Reading Gold product catalog from {catalog}.gold.product_catalog...")
     logger.info("Generating product embeddings via Foundation Model...")
     embeddings_df = generate_embeddings(spark)
 

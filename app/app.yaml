@@ -1,5 +1,13 @@
-# Giant Eagle Receipt Lookup — Databricks App Configuration
+# CS Receipt Lookup Platform — Databricks App Configuration
+# Customer-agnostic app configuration for retail receipt lookup solution.
 # Docs: https://docs.databricks.com/en/dev-tools/databricks-apps/index.html
+#
+# DEPLOYMENT INSTRUCTIONS:
+# Before deploying for your customer, update these values:
+#   - LAKEBASE_INSTANCE_NAME: Set to your Lakebase instance (e.g., "your_company-receipt-db")
+#   - PGDATABASE: Set to your Lakebase database name (typically matches customer_name in databricks.yml)
+#   - resources.instance_name: Must match LAKEBASE_INSTANCE_NAME
+#   - CUSTOMER_DISPLAY_NAME: Set to your company's display name for UI
 
 command:
   - "uvicorn"
@@ -12,44 +20,59 @@ command:
 # Authentication & Authorization (Platform-Level)
 # Databricks Apps enforces auth and injects verified identity headers:
 #   X-Forwarded-Email, X-Forwarded-User, X-Forwarded-Access-Token
-# Configure who can access this app:
+# Configure who can access this app (update group names for your organization):
 permissions:
-  # Grant access to specific workspace groups
+  # Grant access to specific workspace groups (customize for your organization)
   - group_name: "cs_team"
     permission_level: "CAN_VIEW"
   - group_name: "supervisors"
     permission_level: "CAN_VIEW"
   - group_name: "fraud_team"
     permission_level: "CAN_VIEW"
-  # Individual users (e.g., for testing/admin)
+  # Individual users (e.g., for testing/admin) - update with your admin email
   - user_name: "lawrence.kyei@databricks.com"
     permission_level: "CAN_MANAGE"
 
-# Lakebase auto-connection: Databricks injects connection credentials
-# when LAKEBASE_INSTANCE_NAME is specified here.
+# Environment Variables
+# IMPORTANT: Update these values for your customer deployment:
+#   - LAKEBASE_INSTANCE_NAME: Your Lakebase instance name (from databricks.yml var.lakebase_instance_name)
+#   - PGDATABASE: Your database name (typically same as customer_name in databricks.yml)
+#   - CUSTOMER_DISPLAY_NAME: Your company's display name (from databricks.yml var.customer_display_name)
+#
+# PGHOST and PGUSER are automatically resolved by the app from the Lakebase instance
+# and Databricks workspace authentication, but can be overridden here if needed.
 env:
+  # Lakebase connection parameters (UPDATE FOR YOUR DEPLOYMENT)
   - name: LAKEBASE_INSTANCE_NAME
-    value: "giant-eagle-receipt-db"
-  - name: PGHOST
-    value: "instance-48e7b373-3240-4e42-a9f0-d7289706e1c6.database.azuredatabricks.net"
+    value: "acme_retail-receipt-db"  # CHANGE THIS: matches databricks.yml lakebase_instance_name
+  - name: PGDATABASE
+    value: "acme_retail"  # CHANGE THIS: matches databricks.yml customer_name
   - name: PGPORT
     value: "5432"
-  - name: PGDATABASE
-    value: "giant_eagle"
-  - name: PGUSER
-    value: "e1751c32-5a1b-4d6f-90c2-e71e10246366"
   - name: PGSSLMODE
     value: "require"
 
+  # Customer branding (UPDATE FOR YOUR DEPLOYMENT)
+  - name: CUSTOMER_DISPLAY_NAME
+    value: "Acme Retail"  # CHANGE THIS: matches databricks.yml customer_display_name
+
+  # Optional overrides (usually auto-detected, uncomment only if needed)
+  # - name: PGHOST
+  #   value: "instance-<uuid>.database.azuredatabricks.net"
+  # - name: PGUSER
+  #   value: "<service-principal-client-id>"
+
+# Lakebase Resource Declaration
+# The instance_name must match LAKEBASE_INSTANCE_NAME above
 resources:
   - name: lakebase-instance
     type: lakebase
-    instance_name: "giant-eagle-receipt-db"
+    instance_name: "acme_retail-receipt-db"  # CHANGE THIS: matches LAKEBASE_INSTANCE_NAME
 
   - name: model-serving
     type: serving_endpoint
-    endpoint_name: "databricks-claude-sonnet-4"
+    endpoint_name: "databricks-claude-sonnet-4"  # Or your preferred LLM endpoint
 
   - name: embedding-model
     type: serving_endpoint
-    endpoint_name: "databricks-bge-large-en"
+    endpoint_name: "databricks-bge-large-en"  # Or your preferred embedding model

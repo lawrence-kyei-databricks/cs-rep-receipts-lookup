@@ -1,5 +1,6 @@
 """
-Giant Eagle — Databricks Native Auth + Unity Catalog RBAC
+CS Receipt Lookup Platform — Databricks Native Auth + Unity Catalog RBAC
+Customer-agnostic implementation supporting any retail customer.
 
 Authentication is handled by the Databricks Apps platform (SSO header injection).
 Authorization is enforced by Unity Catalog (row filters, column masks, table grants).

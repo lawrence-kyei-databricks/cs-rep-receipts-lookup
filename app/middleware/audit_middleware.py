@@ -1,5 +1,7 @@
 """
-Giant Eagle — Audit Middleware
+CS Receipt Lookup Platform — Audit Middleware
+Customer-agnostic implementation supporting any retail customer.
+
 Automatically logs every CS rep action for compliance.
 Every request to the receipt lookup app is recorded in the audit_log table.
 No exceptions — this is a regulatory requirement for customer data access.

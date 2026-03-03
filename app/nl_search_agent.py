@@ -1,5 +1,7 @@
 """
-Giant Eagle — Natural Language Receipt Search Agent
+CS Receipt Lookup Platform — Natural Language Receipt Search Agent
+Customer-agnostic implementation supporting any retail customer.
+
 CS tool that converts natural language queries like "that chicken from last week"
 into SQL against Lakebase or semantic search against pgvector.
 
@@ -12,6 +14,7 @@ All monetary columns are BIGINT in cents — divide by 100 to display as dollars
 
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any
 
@@ -20,6 +23,10 @@ from psycopg.rows import dict_row
 from mlflow.deployments import get_deploy_client
 
 logger = logging.getLogger(__name__)
+
+# ── Customer Configuration ─────────────────────────────────────────────────────
+# Read from environment (set in app.yaml) - same pattern as main.py and routes
+CUSTOMER_DISPLAY_NAME = os.environ.get("CUSTOMER_DISPLAY_NAME", "CS Receipt Lookup")
 
 # Schema context for the LLM (helps generate accurate SQL).
 # All column names must match the actual Lakebase schema provisioned in Phase 1.
@@ -68,7 +75,7 @@ NOTE: All monetary values are in cents (BIGINT). To display as dollars, divide b
 Current date: {current_date}
 """
 
-SYSTEM_PROMPT = """You are an internal CS (customer service) search assistant for Giant Eagle.
+SYSTEM_PROMPT = f"""You are an internal CS (customer service) search assistant for {CUSTOMER_DISPLAY_NAME}.
 A CS rep is trying to find a customer's receipt based on what the customer described over the phone.
 
 Given the rep's search query, determine the best approach:

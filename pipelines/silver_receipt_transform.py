@@ -1,6 +1,8 @@
 """
-Giant Eagle — Silver Receipt Transform
+CS Receipt Lookup Platform — Silver Receipt Transform
 Lakeflow Declarative Pipeline — Part of the Silver pipeline
+
+Customer-agnostic Silver pipeline that processes quality-gated Bronze data.
 
 Silver responsibilities:
   1. Dedup receipts and items using dlt.apply_changes() (UPSERT on transaction_id)
@@ -19,7 +21,7 @@ Silver responsibilities:
 This file is part of the Silver pipeline together with bronze_receipt_ingest.py.
 DLT resolves references between the two files within the same pipeline.
 
-Target schema: giant_eagle.silver (set at pipeline level)
+Target schema: {catalog}.silver (set at pipeline level in databricks.yml)
 """
 
 import dlt

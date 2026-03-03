@@ -1,5 +1,6 @@
 """
-Rate limiting middleware for Giant Eagle CS Receipt Lookup API.
+CS Receipt Lookup Platform — Rate Limiting Middleware
+Customer-agnostic implementation supporting any retail customer.
 
 Implements token bucket algorithm to prevent API abuse while allowing
 reasonable burst traffic. Applies uniform rate limit to all authenticated users.
