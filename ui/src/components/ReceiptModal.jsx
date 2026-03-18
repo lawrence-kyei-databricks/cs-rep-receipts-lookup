@@ -91,6 +91,7 @@ export default function ReceiptModal({ receipt, onClose }) {
                 <div className="items-list">
                   {receipt.line_items.map((item, idx) => (
                     <div key={idx} className="item-line">
+                      <span className="item-qty">{item.quantity || 1}x</span>
                       <span className="item-name">{item.name}</span>
                       <span className="item-price">{fmt$(item.price_cents)}</span>
                     </div>

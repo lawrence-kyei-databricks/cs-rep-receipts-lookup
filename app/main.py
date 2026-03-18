@@ -30,6 +30,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from middleware.audit_middleware import AuditMiddleware
 from middleware.rate_limit_middleware import RateLimitMiddleware
+# All routes including AI-dependent ones
 from routes import lookup, search, fuzzy_search, cs_context, receipt_delivery, audit, admin, debug, genie_search
 
 logger = logging.getLogger(__name__)
@@ -161,7 +162,7 @@ async def lifespan(app: FastAPI):
             max_idle=600.0,  # 10 minutes
             open=True,  # Open the pool immediately
         )
-        logger.info("Lakebase connection pool created successfully")
+        logger.info("Lakebase connection pool opened and ready")
 
     except Exception as exc:
         logger.error("Failed to create Lakebase connection pool: %s — routes requiring DB will fail", exc)
@@ -282,7 +283,7 @@ if CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# Routes
+# All routes registered
 app.include_router(lookup.router, prefix="/receipt", tags=["Receipt Lookup"])
 app.include_router(search.router, prefix="/search", tags=["AI Search"])
 app.include_router(fuzzy_search.router, prefix="/search", tags=["Fuzzy Search"])

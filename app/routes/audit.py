@@ -53,10 +53,10 @@ async def query_audit_log(
         conditions.append("resource_type = %s")
         params.append(resource_type)
     if date_from:
-        conditions.append("timestamp >= %s::timestamptz")
+        conditions.append("created_at >= %s::timestamptz")
         params.append(date_from)
     if date_to:
-        conditions.append("timestamp <= %s::timestamptz")
+        conditions.append("created_at <= %s::timestamptz")
         params.append(date_to)
 
     where = " AND ".join(conditions) if conditions else "1=1"
@@ -68,10 +68,10 @@ async def query_audit_log(
                 f"""
                 SELECT audit_id, rep_email, action,
                        resource_type, resource_id, query_params,
-                       result_count, timestamp as created_at
+                       result_count, created_at
                 FROM audit_log
                 WHERE {where}
-                ORDER BY timestamp DESC
+                ORDER BY created_at DESC
                 LIMIT %s
                 """,
                 params,
@@ -102,10 +102,10 @@ async def get_rep_audit_trail(
             await cur.execute(
                 """
                 SELECT audit_id, action, resource_type, resource_id,
-                       query_params, result_count, timestamp as created_at
+                       query_params, result_count, created_at
                 FROM audit_log
                 WHERE rep_email = %s
-                ORDER BY timestamp DESC
+                ORDER BY created_at DESC
                 LIMIT %s
                 """,
                 (rep_email, limit),

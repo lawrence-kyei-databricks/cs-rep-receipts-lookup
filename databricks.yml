@@ -13,11 +13,15 @@ variables:
   # Customer Identity
   customer_name:
     description: "Customer identifier (lowercase, underscores only)"
-    default: "acme_retail"
+    default: "giant_eagle"
+
+  customer_slug:
+    description: "URL-safe customer identifier (lowercase, hyphens only)"
+    default: "giant-eagle"
 
   customer_display_name:
     description: "Customer display name for UI"
-    default: "Acme Retail"
+    default: "Giant Eagle"
 
   # Unity Catalog Configuration
   catalog:
@@ -159,7 +163,7 @@ resources:
   # ── Databricks App ────────────────────────────────────────────────
   apps:
     cs_receipt_lookup:
-      name: ${var.customer_name}-cs-receipt-lookup
+      name: ${var.customer_slug}-cs-receipt-lookup
       description: >
         ${var.customer_display_name} CS Receipt Lookup — AI-powered receipt search for Customer Service reps.
         Fuzzy search, semantic search, customer context cards, receipt delivery (email/print).

@@ -2,7 +2,29 @@ import { useState } from 'react'
 import api from '../api'
 import ReceiptModal from '../components/ReceiptModal'
 
-const STORES = ['', 'East Liberty', 'Shadyside', 'Squirrel Hill', 'Monroeville']
+const STORES = [
+  '',
+  'Bethel Park',
+  'Bloomfield',
+  'Cranberry',
+  'Downtown',
+  'East Liberty',
+  'Greenfield',
+  'Highland Park',
+  'Homestead',
+  'Lawrenceville',
+  'Monroeville',
+  'Mt. Lebanon',
+  'North Hills',
+  'Oakland',
+  'Regent Square',
+  'Robinson',
+  'Ross Park',
+  'Shadyside',
+  'Southside',
+  'Squirrel Hill',
+  'Waterfront'
+]
 
 function fmt$(cents) {
   if (cents == null) return '—'

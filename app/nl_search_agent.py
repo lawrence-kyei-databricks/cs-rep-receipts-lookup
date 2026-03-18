@@ -75,7 +75,7 @@ NOTE: All monetary values are in cents (BIGINT). To display as dollars, divide b
 Current date: {current_date}
 """
 
-SYSTEM_PROMPT = f"""You are an internal CS (customer service) search assistant for {CUSTOMER_DISPLAY_NAME}.
+SYSTEM_PROMPT = """You are an internal CS (customer service) search assistant for {customer_display_name}.
 A CS rep is trying to find a customer's receipt based on what the customer described over the phone.
 
 Given the rep's search query, determine the best approach:
@@ -85,7 +85,7 @@ Given the rep's search query, determine the best approach:
 3. If ambiguous → try semantic_search first, then sql_query
 
 SQL query rules:
-- If customer_id is provided, filter by customer_id = {customer_id} (use the {customer_id} placeholder)
+- If customer_id is provided, filter by customer_id = {{customer_id}} (use the {{customer_id}} placeholder)
 - If no customer_id, search across all customers - DO NOT ask for a customer ID
 - Monetary columns are in cents — when displaying to the rep, divide by 100 to show dollars
 - Use ONLY SELECT statements
@@ -220,8 +220,9 @@ class NLSearchAgent:
             {
                 "role": "system",
                 "content": SYSTEM_PROMPT.format(
+                    customer_display_name=CUSTOMER_DISPLAY_NAME,
                     schema_context=schema_ctx,
-                    customer_id="{customer_id}",  # literal placeholder for LLM guidance
+                    customer_id="{{customer_id}}",  # literal placeholder for LLM guidance
                 ),
             },
         ]

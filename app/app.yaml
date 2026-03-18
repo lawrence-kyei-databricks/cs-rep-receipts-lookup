@@ -44,9 +44,9 @@ permissions:
 env:
   # Lakebase connection parameters (UPDATE FOR YOUR DEPLOYMENT)
   - name: LAKEBASE_INSTANCE_NAME
-    value: "acme_retail-receipt-db"  # CHANGE THIS: matches databricks.yml lakebase_instance_name
+    value: "giant-eagle-receipt-db-v2"  # CHANGE THIS: matches databricks.yml lakebase_instance_name
   - name: PGDATABASE
-    value: "acme_retail"  # CHANGE THIS: matches databricks.yml customer_name
+    value: "databricks_postgres"  # Standard Lakebase database name
   - name: PGPORT
     value: "5432"
   - name: PGSSLMODE
@@ -54,20 +54,14 @@ env:
 
   # Customer branding (UPDATE FOR YOUR DEPLOYMENT)
   - name: CUSTOMER_DISPLAY_NAME
-    value: "Acme Retail"  # CHANGE THIS: matches databricks.yml customer_display_name
-
-  # Optional overrides (usually auto-detected, uncomment only if needed)
-  # - name: PGHOST
-  #   value: "instance-<uuid>.database.azuredatabricks.net"
-  # - name: PGUSER
-  #   value: "<service-principal-client-id>"
+    value: "Giant Eagle"  # CHANGE THIS: matches databricks.yml customer_display_name
 
 # Lakebase Resource Declaration
 # The instance_name must match LAKEBASE_INSTANCE_NAME above
 resources:
   - name: lakebase-instance
     type: lakebase
-    instance_name: "acme_retail-receipt-db"  # CHANGE THIS: matches LAKEBASE_INSTANCE_NAME
+    instance_name: "giant-eagle-receipt-db-v2"  # CHANGE THIS: matches LAKEBASE_INSTANCE_NAME
 
   - name: model-serving
     type: serving_endpoint

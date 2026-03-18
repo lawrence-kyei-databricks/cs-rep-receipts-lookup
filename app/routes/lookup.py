@@ -147,7 +147,7 @@ async def get_receipt(
                     rl.customer_name, rl.transaction_ts, rl.transaction_date,
                     rl.subtotal_cents, rl.tax_cents, rl.total_cents,
                     rl.tender_type, rl.card_last4, rl.item_count, rl.item_summary,
-                    rl.category_tags,
+                    rl.category_tags, rl.items_detail,
                     li.line_number, li.sku, li.product_name, li.brand,
                     li.category_l1, li.quantity, li.unit_price_cents,
                     li.line_total_cents, li.discount_cents
@@ -196,6 +196,21 @@ async def get_receipt(
                 "quantity": float(row["quantity"]) if row["quantity"] is not None else 0.0,
                 "category": row["category_l1"]
             })
+
+    # If no line items from receipt_line_items table, try parsing items_detail JSON
+    if not line_items and first_row["items_detail"]:
+        try:
+            # items_detail is JSON: [{"line": 1, "item": "Banana", "qty": 2, "price": 59, "total": 118}, ...]
+            items_json = json.loads(first_row["items_detail"]) if isinstance(first_row["items_detail"], str) else first_row["items_detail"]
+            for item in items_json:
+                line_items.append({
+                    "name": item.get("item", "Unknown Item"),
+                    "price_cents": item.get("total", 0),  # Use extended price (qty * price)
+                    "quantity": float(item.get("qty", 1)),
+                })
+        except (json.JSONDecodeError, TypeError, KeyError) as e:
+            # If JSON parsing fails, just log and continue with empty line_items
+            pass
 
     receipt_dict["line_items"] = line_items
 

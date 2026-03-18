@@ -2,6 +2,7 @@ import { useState } from 'react'
 import api from '../api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import ReceiptModal from '../components/ReceiptModal'
 
 const EXAMPLES = [
   { label: 'Fancy cheese purchase', query: 'that fancy cheese I bought', cust: 'cust-5003' },
@@ -17,6 +18,7 @@ export default function AISearch() {
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState(null)
   const [showDebug, setShowDebug]   = useState(false)
+  const [selected, setSelected]     = useState(null)
 
   const handleSearch = async (e) => {
     e.preventDefault()
@@ -34,6 +36,15 @@ export default function AISearch() {
   }
 
   const fill = (ex) => { setCustomerId(ex.cust); setQuery(ex.query) }
+
+  const handleViewReceipt = async (transactionId) => {
+    try {
+      const fullReceipt = await api.getReceipt(transactionId)
+      setSelected(fullReceipt)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   return (
     <div className="page">
@@ -99,7 +110,38 @@ export default function AISearch() {
             </button>
           </div>
           <div className="ai-result-content">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                p: ({ children }) => {
+                  // Convert text nodes with transaction IDs to clickable links
+                  const processedChildren = React.Children.map(children, child => {
+                    if (typeof child === 'string') {
+                      // Match transaction IDs (TXN-..., TX-..., or similar patterns)
+                      const txnRegex = /(TXN?-[A-Za-z0-9\-]+)/g
+                      const parts = child.split(txnRegex)
+                      return parts.map((part, i) => {
+                        if (txnRegex.test(part)) {
+                          return (
+                            <button
+                              key={i}
+                              className="btn-link"
+                              onClick={() => handleViewReceipt(part)}
+                              style={{ fontSize: 'inherit', verticalAlign: 'baseline' }}
+                            >
+                              {part}
+                            </button>
+                          )
+                        }
+                        return part
+                      })
+                    }
+                    return child
+                  })
+                  return <p>{processedChildren}</p>
+                }
+              }}
+            >
               {result.answer || 'No answer returned'}
             </ReactMarkdown>
           </div>
@@ -113,6 +155,8 @@ export default function AISearch() {
           )}
         </div>
       )}
+
+      {selected && <ReceiptModal receipt={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }
